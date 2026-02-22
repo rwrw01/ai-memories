@@ -1,3 +1,7 @@
+networks:
+  ai-net:
+    external: true   # created by /home/ralph/services/docker-compose.yml
+
 services:
   frontend:
     build: ./frontend
@@ -22,16 +26,6 @@ services:
       - path: .env
         required: false
     restart: unless-stopped
-    volumes:
-      # Persist downloaded Parakeet + HuggingFace model weights across rebuilds
-      - parakeet-cache:/app/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-volumes:
-  parakeet-cache:
+    networks:
+      - default
+      - ai-net   # reaches stt:8001 on the shared AI network
