@@ -1,2 +1,299 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	// Backend URL: same host as the frontend, port 8000.
+	// Works for localhost dev AND iPhone via Tailscale (same hostname, different port).
+	function backendUrl(): string {
+		if (typeof window === 'undefined') return 'http://localhost:8000';
+		return `${window.location.protocol}//${window.location.hostname}:8000`;
+	}
+
+	let status = $state<'idle' | 'luisteren' | 'verwerken' | 'fout'>('idle');
+	let transcriptie = $state('');
+	let foutmelding = $state('');
+
+	const statusTekst: Record<typeof status, string> = {
+		idle: 'Tik om te spreken',
+		luisteren: 'Ik luister...',
+		verwerken: 'Even geduld...',
+		fout: 'Er ging iets mis'
+	};
+
+	let mediaRecorder: MediaRecorder | null = null;
+	let audioChunks: Blob[] = [];
+
+	function getSupportedMimeType(): string {
+		const candidates = [
+			'audio/webm;codecs=opus',
+			'audio/webm',
+			'audio/ogg;codecs=opus',
+			'audio/mp4'
+		];
+		return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+	}
+
+	async function startOpname() {
+		foutmelding = '';
+		transcriptie = '';
+
+		let stream: MediaStream;
+		try {
+			stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		} catch {
+			foutmelding = 'Geen toegang tot microfoon';
+			status = 'fout';
+			return;
+		}
+
+		const mimeType = getSupportedMimeType();
+		mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+		audioChunks = [];
+
+		mediaRecorder.ondataavailable = (e) => {
+			if (e.data.size > 0) audioChunks.push(e.data);
+		};
+
+		mediaRecorder.onstop = async () => {
+			stream.getTracks().forEach((t) => t.stop());
+			await verstuurAudio(mimeType);
+		};
+
+		mediaRecorder.start();
+		status = 'luisteren';
+	}
+
+	function stopOpname() {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			status = 'verwerken';
+			mediaRecorder.stop();
+		}
+	}
+
+	async function verstuurAudio(mimeType: string) {
+		const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
+		const form = new FormData();
+		form.append('audio', blob, 'opname.webm');
+
+		try {
+			const res = await fetch(`${backendUrl()}/api/stt`, {
+				method: 'POST',
+				body: form
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ detail: res.statusText }));
+				throw new Error(err.detail ?? 'Onbekende fout');
+			}
+
+			const data = await res.json();
+			transcriptie = data.text ?? '';
+			status = 'idle';
+		} catch (err) {
+			foutmelding = err instanceof Error ? err.message : 'Verbindingsfout';
+			status = 'fout';
+		}
+	}
+
+	function handleMicKlik() {
+		if (status === 'luisteren') {
+			stopOpname();
+		} else if (status === 'idle' || status === 'fout') {
+			startOpname();
+		}
+	}
+</script>
+
+<div class="home">
+	<section class="record-section">
+		<button
+			class="mic-button"
+			class:active={status === 'luisteren'}
+			disabled={status === 'verwerken'}
+			aria-label="Spreek een herinnering in"
+			onclick={handleMicKlik}
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="currentColor">
+				<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 0 0-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+			</svg>
+		</button>
+
+		<p class="status-tekst" class:actief={status !== 'idle'}>
+			{statusTekst[status]}
+		</p>
+	</section>
+
+	{#if transcriptie}
+		<section class="transcriptie-section">
+			<div class="transcriptie-kaart">
+				<p class="transcriptie-tekst">{transcriptie}</p>
+			</div>
+		</section>
+	{/if}
+
+	{#if foutmelding}
+		<section class="fout-section">
+			<div class="fout-kaart">
+				<p>{foutmelding}</p>
+			</div>
+		</section>
+	{/if}
+
+	<section class="info-section">
+		<div class="info-kaart">
+			<h2>Welkom bij Herinneringen</h2>
+			<p>
+				Spreek je gedachten, taken of herinneringen in en de assistent
+				helpt je ze te bewaren en terug te vinden.
+			</p>
+		</div>
+
+		<div class="status-banner">
+			<span class="status-dot online"></span>
+			<span>Spraakherkenning actief via Parakeet TDT</span>
+		</div>
+	</section>
+</div>
+
+<style>
+	.home {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2rem;
+		padding: 2rem 1.25rem;
+		min-height: 100%;
+	}
+
+	.record-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1.25rem;
+		margin-top: 1rem;
+	}
+
+	.mic-button {
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		border: none;
+		background: linear-gradient(135deg, #e94560, #c23152);
+		color: white;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 4px 24px rgba(233, 69, 96, 0.4);
+		transition: transform 0.15s, box-shadow 0.15s;
+	}
+
+	.mic-button:hover:not(:disabled) {
+		transform: scale(1.05);
+		box-shadow: 0 6px 32px rgba(233, 69, 96, 0.55);
+	}
+
+	.mic-button:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	.mic-button.active {
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.mic-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	@keyframes pulse {
+		0%, 100% { box-shadow: 0 4px 24px rgba(233, 69, 96, 0.4); }
+		50% { box-shadow: 0 4px 48px rgba(233, 69, 96, 0.8); }
+	}
+
+	.status-tekst {
+		font-size: 1rem;
+		color: #888;
+		transition: color 0.2s;
+	}
+
+	.status-tekst.actief {
+		color: #e94560;
+	}
+
+	.transcriptie-section,
+	.fout-section,
+	.info-section {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.transcriptie-kaart {
+		background: #16213e;
+		border: 1px solid #0f3460;
+		border-radius: 1rem;
+		padding: 1.25rem;
+	}
+
+	.transcriptie-tekst {
+		font-size: 1rem;
+		color: #eaeaea;
+		line-height: 1.6;
+		margin: 0;
+	}
+
+	.fout-kaart {
+		background: #2a1020;
+		border: 1px solid #e94560;
+		border-radius: 1rem;
+		padding: 1rem 1.25rem;
+		font-size: 0.875rem;
+		color: #e94560;
+	}
+
+	.fout-kaart p {
+		margin: 0;
+	}
+
+	.info-kaart {
+		background: #16213e;
+		border: 1px solid #0f3460;
+		border-radius: 1rem;
+		padding: 1.25rem;
+	}
+
+	.info-kaart h2 {
+		font-size: 1rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+		color: #eaeaea;
+	}
+
+	.info-kaart p {
+		font-size: 0.875rem;
+		color: #aaa;
+		line-height: 1.5;
+	}
+
+	.status-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: #16213e;
+		border: 1px solid #0f3460;
+		border-radius: 0.75rem;
+		padding: 0.75rem 1rem;
+		font-size: 0.8rem;
+		color: #888;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.status-dot.online {
+		background: #22c55e;
+	}
+</style>

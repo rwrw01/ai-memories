@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"cd /home/ralph/memories && docker compose version\":*)",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"cd /home/ralph/memories && docker compose up --build\")",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(cd:*)",
+      "Bash(npm audit:*)",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"docker images memories-* 2>/dev/null\")",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"docker image ls | grep memories\")",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"docker images --format ''table {{.Repository}}\\\\t{{.Tag}}\\\\t{{.Size}}'' | grep -E ''memories|nvidia|REPO''\")",
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c:*)",
+      "Bash(wsl:*)",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/**)"
+    ],
+    "additionalDirectories": [
+      "\\home\\ralph\\memories\\backend\\app",
+      "\\\\wsl.localhost\\Ubuntu-22.04\\home\\ralph\\memories\\backend\\app",
+      "\\home\\ralph\\memories\\backend",
+      "\\\\wsl.localhost\\Ubuntu-22.04\\home\\ralph\\memories\\backend",
+      "\\home\\ralph\\memories",
+      "\\\\wsl.localhost\\Ubuntu-22.04\\home\\ralph\\memories"
+    ]
+  }
+}

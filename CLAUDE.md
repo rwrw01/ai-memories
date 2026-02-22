@@ -29,4 +29,4 @@
 - `cd backend && uvicorn app.main:app --reload` — backend dev
 
 ## Current Phase
-Phase 1: PWA Basis (branch: feature/pwa-basis)
+Phase 2: STT Parakeet (branch: feature/stt-parakeet)
