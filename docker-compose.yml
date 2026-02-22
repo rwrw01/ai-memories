@@ -16,6 +16,8 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    environment:
+      - ORIGIN=${ORIGIN:-http://localhost:3000}
     env_file:
       - path: .env
         required: false

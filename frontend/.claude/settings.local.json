@@ -16,7 +16,14 @@
       "Bash(wsl -d Ubuntu-22.04 -- bash -c \"docker images --format ''table {{.Repository}}\\\\t{{.Tag}}\\\\t{{.Size}}'' | grep -E ''memories|nvidia|REPO''\")",
       "Bash(wsl -d Ubuntu-22.04 -- bash -c:*)",
       "Bash(wsl:*)",
-      "Read(///wsl.localhost/Ubuntu-22.04/home/**)"
+      "Read(///wsl.localhost/Ubuntu-22.04/home/**)",
+      "Bash(curl:*)",
+      "Bash(docker pull:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:onnxruntime.ai)"
     ],
     "additionalDirectories": [
       "\\home\\ralph\\memories\\backend\\app",

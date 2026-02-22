@@ -15,5 +15,9 @@ RUN pip install -r requirements.txt && \
     | sort -u > /etc/ld.so.conf.d/nvidia-cuda.conf && ldconfig
 
 COPY app/ ./app/
+
+RUN useradd -m -u 1000 app
+USER app
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

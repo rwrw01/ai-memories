@@ -1,6 +1,7 @@
 # Memories — Claude Code Instructions
 
 ## CONSTRAINTS (non-negotiable)
+0. Keep README.md in sync — update architecture diagram, API table, stack table, and roadmap checkboxes when making structural changes
 1. Dutch UI text, English code/comments
 2. All AI models run LOCAL (no cloud APIs for STT/TTS/LLM)
 3. Docker containers for all services

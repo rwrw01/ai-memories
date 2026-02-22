@@ -147,7 +147,7 @@
 
 		<div class="status-banner">
 			<span class="status-dot online"></span>
-			<span>Spraakherkenning actief via Parakeet TDT</span>
+			<span>Spraakherkenning actief via Parakeet TDT v3 (NL)</span>
 		</div>
 	</section>
 </div>

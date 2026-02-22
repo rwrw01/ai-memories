@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(///wsl.localhost/Ubuntu-22.04/home/**)",
+      "Bash(where:*)",
+      "Bash(wsl:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\RalphWagter\\Desktop"
+    ]
+  }
+}
