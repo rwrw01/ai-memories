@@ -4,31 +4,9 @@ Personal AI assistant that runs entirely local on a home server (RTX 3060 Ti). D
 
 ## Architecture
 
-```
-iPhone (Safari PWA)
-       │ HTTPS
-       ▼
-┌─ Tailscale Funnel ─────────────────────────┐
-│                                             │
-│  ┌─────────────┐      ┌─────────────────┐  │
-│  │  SvelteKit  │─────▶│    FastAPI       │  │
-│  │  Frontend   │◀─────│    Backend       │  │
-│  │  :3000      │      │    :8000         │  │
-│  └─────────────┘      └──┬──┬──┬────────┘  │
-│                          │  │  │            │
-│              ┌───────────┘  │  └──────┐     │
-│              ▼              ▼         ▼     │
-│  ┌───────────────┐ ┌────────────┐ ┌─────┐  │
-│  │  Parakeet STT │ │ Parkiet TTS│ │Ollama│  │
-│  │  (onnx, GPU)  │ │ + Piper    │ │ LLM │  │
-│  └───────────────┘ └────────────┘ └─────┘  │
-│                                             │
-│  ┌──────────┐                               │
-│  │   n8n    │  orchestration & cron jobs    │
-│  └──────────┘                               │
-└─────────────────────────────────────────────┘
-         All services in Docker + CUDA GPU
-```
+![Architecture diagram](docs/architecture.png)
+
+> Generate: `pip install diagrams && sudo apt install graphviz && python docs/generate_architecture.py`
 
 ## Stack
 
