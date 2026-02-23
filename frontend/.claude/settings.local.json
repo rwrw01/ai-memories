@@ -23,7 +23,14 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:pypi.org)",
-      "WebFetch(domain:onnxruntime.ai)"
+      "WebFetch(domain:onnxruntime.ai)",
+      "WebFetch(domain:community.home-assistant.io)",
+      "Read(///wsl.localhost/Ubuntu-22.04/home/ralph/**)",
+      "WebFetch(domain:northflank.com)",
+      "WebFetch(domain:docs.nvidia.com)",
+      "WebFetch(domain:k2-fsa.github.io)",
+      "WebFetch(domain:modal.com)",
+      "Read(//c/Users/RalphWagter/**)"
     ],
     "additionalDirectories": [
       "\\home\\ralph\\memories\\backend\\app",

@@ -7,7 +7,9 @@ export default defineConfig({
 		sveltekit(),
 		SvelteKitPWA({
 			registerType: 'autoUpdate',
-			strategies: 'generateSW',
+			strategies: 'injectManifest',
+			srcDir: 'src',
+			filename: 'service-worker.ts',
 			manifest: {
 				name: 'Herinneringen',
 				short_name: 'Herinneringen',
@@ -42,8 +44,8 @@ export default defineConfig({
 					}
 				]
 			},
-			workbox: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}']
+			injectManifest: {
+				globPatterns: ['client/**/*.{js,css,html,ico,png,svg,webp,woff2}']
 			},
 			devOptions: {
 				enabled: true,

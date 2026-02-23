@@ -9,7 +9,9 @@ RUN pip install -r requirements.txt
 
 COPY app/ ./app/
 
-RUN useradd -m -u 1000 app
+RUN useradd -m -u 1000 app && \
+    mkdir -p /data/audio/news && \
+    chown -R app:app /data
 USER app
 
 EXPOSE 8000

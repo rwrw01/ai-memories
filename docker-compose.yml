@@ -9,6 +9,7 @@ services:
       - "3000:3000"
     environment:
       - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - BACKEND_URL=http://backend:8000
     env_file:
       - path: .env
         required: false
@@ -20,6 +21,8 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    volumes:
+      - backend-data:/data
     environment:
       - ORIGIN=${ORIGIN:-http://localhost:3000}
     env_file:
@@ -28,4 +31,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-      - ai-net   # reaches stt:8001 on the shared AI network
+      - ai-net   # reaches stt:8001, tts:8002, ollama:11434, n8n:5678
+
+volumes:
+  backend-data:
