@@ -6,6 +6,7 @@
 		return `${window.location.protocol}//${window.location.hostname}:8000`;
 	}
 
+	// --- STT state ---
 	let status = $state<'idle' | 'luisteren' | 'verwerken' | 'fout'>('idle');
 	let transcriptie = $state('');
 	let foutmelding = $state('');
@@ -99,6 +100,48 @@
 			startOpname();
 		}
 	}
+
+	// --- TTS state ---
+	let ttsStatus = $state<'idle' | 'laden' | 'klaar' | 'fout'>('idle');
+	let ttsTekst = $state('');
+	let ttsFout = $state('');
+	let ttsEngine = $state<'piper' | 'parkiet' | 'auto'>('piper');
+	let audioElement: HTMLAudioElement | null = null;
+	let audioUrl = $state('');
+
+	async function spreekUit() {
+		if (!ttsTekst.trim()) return;
+		ttsStatus = 'laden';
+		ttsFout = '';
+
+		if (audioUrl) {
+			URL.revokeObjectURL(audioUrl);
+			audioUrl = '';
+		}
+
+		try {
+			const res = await fetch(`${backendUrl()}/api/tts/synthesize`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text: ttsTekst, engine: ttsEngine, voice: 'default' })
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ detail: res.statusText }));
+				throw new Error(err.detail ?? 'TTS mislukt');
+			}
+
+			const blob = await res.blob();
+			audioUrl = URL.createObjectURL(blob);
+			ttsStatus = 'klaar';
+
+			// Auto-play
+			await audioElement?.play();
+		} catch (err) {
+			ttsFout = err instanceof Error ? err.message : 'Verbindingsfout';
+			ttsStatus = 'fout';
+		}
+	}
 </script>
 
 <div class="home">
@@ -136,18 +179,61 @@
 		</section>
 	{/if}
 
+	<!-- TTS test panel -->
+	<section class="tts-section">
+		<div class="tts-kaart">
+			<h2>Tekst uitspreken</h2>
+
+			<textarea
+				class="tts-invoer"
+				placeholder="Typ tekst om voor te lezen…"
+				rows="3"
+				bind:value={ttsTekst}
+			></textarea>
+
+			<div class="tts-controls">
+				<select class="engine-keuze" bind:value={ttsEngine}>
+					<option value="piper">Piper (snel)</option>
+					<option value="parkiet">Parkiet (hoge kwaliteit)</option>
+					<option value="auto">Automatisch</option>
+				</select>
+
+				<button
+					class="spreek-knop"
+					disabled={ttsStatus === 'laden' || !ttsTekst.trim()}
+					onclick={spreekUit}
+				>
+					{ttsStatus === 'laden' ? 'Bezig…' : 'Spreek uit'}
+				</button>
+			</div>
+
+			{#if audioUrl}
+				<!-- svelte-ignore a11y_media_has_caption -->
+				<audio bind:this={audioElement} src={audioUrl} controls class="audio-speler"></audio>
+			{/if}
+
+			{#if ttsFout}
+				<p class="tts-fout">{ttsFout}</p>
+			{/if}
+		</div>
+	</section>
+
 	<section class="info-section">
 		<div class="info-kaart">
 			<h2>Welkom bij Herinneringen</h2>
 			<p>
 				Spreek je gedachten, taken of herinneringen in en de assistent
-				helpt je ze te bewaren en terug te vinden.
+helpt je ze te bewaren en terug te vinden.
 			</p>
 		</div>
 
 		<div class="status-banner">
 			<span class="status-dot online"></span>
 			<span>Spraakherkenning actief via Parakeet TDT v3 (NL)</span>
+		</div>
+		<div class="status-banner">
+			<span class="status-dot online"></span>
+			<span>Tekst-naar-spraak actief via Piper + Parkiet (NL)</span>
 		</div>
 	</section>
 </div>
@@ -220,6 +306,7 @@
 
 	.transcriptie-section,
 	.fout-section,
+	.tts-section,
 	.info-section {
 		width: 100%;
 		display: flex;
@@ -251,6 +338,88 @@
 	}
 
 	.fout-kaart p {
+		margin: 0;
+	}
+
+	/* TTS panel */
+	.tts-kaart {
+		background: #16213e;
+		border: 1px solid #0f3460;
+		border-radius: 1rem;
+		padding: 1.25rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+
+	.tts-kaart h2 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: #eaeaea;
+		margin: 0;
+	}
+
+	.tts-invoer {
+		width: 100%;
+		background: #0f3460;
+		border: 1px solid #1a4080;
+		border-radius: 0.5rem;
+		padding: 0.75rem;
+		color: #eaeaea;
+		font-size: 0.95rem;
+		font-family: inherit;
+		resize: vertical;
+		box-sizing: border-box;
+	}
+
+	.tts-invoer:focus {
+		outline: none;
+		border-color: #e94560;
+	}
+
+	.tts-controls {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+	}
+
+	.engine-keuze {
+		flex: 1;
+		background: #0f3460;
+		border: 1px solid #1a4080;
+		border-radius: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		color: #eaeaea;
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+
+	.spreek-knop {
+		background: linear-gradient(135deg, #e94560, #c23152);
+		border: none;
+		border-radius: 0.5rem;
+		padding: 0.5rem 1.25rem;
+		color: white;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: opacity 0.15s;
+		white-space: nowrap;
+	}
+
+	.spreek-knop:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.audio-speler {
+		width: 100%;
+		border-radius: 0.5rem;
+	}
+
+	.tts-fout {
+		font-size: 0.875rem;
+		color: #e94560;
 		margin: 0;
 	}
 

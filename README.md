@@ -45,11 +45,12 @@ iPhone (Safari PWA)
 
 ## API Endpoints
 
-| Method | Path        | Description              | Status |
-|--------|-------------|--------------------------|--------|
-| POST   | `/api/stt`  | Audio → text (Dutch)     | Done   |
-| POST   | `/api/tts`  | Text → audio (Dutch)     | Phase 3|
-| POST   | `/api/chat` | LLM conversation         | Phase 4|
+| Method | Path                    | Description                       | Status |
+|--------|-------------------------|-----------------------------------|--------|
+| POST   | `/api/stt`              | Audio → text (Dutch, Parakeet)    | Done   |
+| POST   | `/api/tts/synthesize`   | Text → WAV audio (Piper/Parkiet)  | Done   |
+| GET    | `/api/tts/engines`      | List available TTS engines        | Done   |
+| POST   | `/api/chat`             | LLM conversation                  | Phase 4|
 
 ## Quick Start
 
@@ -66,7 +67,7 @@ cd backend && uvicorn app.main:app --reload  # :8000
 
 - [x] Phase 1 — PWA basis
 - [x] Phase 2 — STT (Parakeet)
-- [ ] Phase 3 — TTS (Parkiet + Piper fallback)
+- [x] Phase 3 — TTS (Parkiet + Piper fallback)
 - [ ] Phase 4 — LLM (Ollama)
 - [ ] Phase 5 — News briefing (cron 04:30)
 - [ ] Phase 6 — Calendar (Outlook)
