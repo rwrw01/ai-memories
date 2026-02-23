@@ -1,11 +1,4 @@
 <script lang="ts">
-	// Backend URL: same host as the frontend, port 8000.
-	// Works for localhost dev AND iPhone via Tailscale (same hostname, different port).
-	function backendUrl(): string {
-		if (typeof window === 'undefined') return 'http://localhost:8000';
-		return `${window.location.protocol}//${window.location.hostname}:8000`;
-	}
-
 	// --- STT state ---
 	let status = $state<'idle' | 'luisteren' | 'verwerken' | 'fout'>('idle');
 	let transcriptie = $state('');
@@ -74,7 +67,7 @@
 		form.append('audio', blob, 'opname.webm');
 
 		try {
-			const res = await fetch(`${backendUrl()}/api/stt`, {
+			const res = await fetch(`/api/stt`, {
 				method: 'POST',
 				body: form
 			});
@@ -123,7 +116,7 @@
 		}));
 
 		try {
-			const res = await fetch(`${backendUrl()}/api/chat`, {
+			const res = await fetch(`/api/chat`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ messages })
@@ -169,7 +162,7 @@
 		}
 
 		try {
-			const res = await fetch(`${backendUrl()}/api/tts/synthesize`, {
+			const res = await fetch(`/api/tts/synthesize`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ text: ttsTekst, engine: ttsEngine, voice: 'default' })
