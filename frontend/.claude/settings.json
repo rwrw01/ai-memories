@@ -6,7 +6,9 @@
       "Bash(wsl:*)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\RalphWagter\\Desktop"
+      "C:\\Users\\RalphWagter\\Desktop",
+      "\\\\wsl.localhost\\Ubuntu-22.04\\home\\ralph\\services\\stt",
+      "\\\\wsl.localhost\\Ubuntu-22.04\\home\\ralph"
     ]
   }
 }
