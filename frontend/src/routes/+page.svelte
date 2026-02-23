@@ -101,6 +101,55 @@
 		}
 	}
 
+	// --- Chat state ---
+	type ChatBericht = { rol: 'gebruiker' | 'assistent'; tekst: string };
+	let chatBerichten = $state<ChatBericht[]>([]);
+	let chatInvoer = $state('');
+	let chatStatus = $state<'idle' | 'denken' | 'fout'>('idle');
+	let chatFout = $state('');
+
+	async function stuurBericht() {
+		const tekst = chatInvoer.trim();
+		if (!tekst || chatStatus === 'denken') return;
+
+		chatBerichten = [...chatBerichten, { rol: 'gebruiker', tekst }];
+		chatInvoer = '';
+		chatStatus = 'denken';
+		chatFout = '';
+
+		const messages = chatBerichten.map((b) => ({
+			role: b.rol === 'gebruiker' ? 'user' : 'assistant',
+			content: b.tekst
+		}));
+
+		try {
+			const res = await fetch(`${backendUrl()}/api/chat`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ messages })
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ detail: res.statusText }));
+				throw new Error(err.detail ?? 'Onbekende fout');
+			}
+
+			const data = await res.json();
+			chatBerichten = [...chatBerichten, { rol: 'assistent', tekst: data.reply ?? '' }];
+			chatStatus = 'idle';
+		} catch (err) {
+			chatFout = err instanceof Error ? err.message : 'Verbindingsfout';
+			chatStatus = 'fout';
+		}
+	}
+
+	function handleChatToets(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			stuurBericht();
+		}
+	}
+
 	// --- TTS state ---
 	let ttsStatus = $state<'idle' | 'laden' | 'klaar' | 'fout'>('idle');
 	let ttsTekst = $state('');
@@ -218,6 +267,50 @@
 		</div>
 	</section>
 
+	<!-- Chat panel -->
+	<section class="chat-section">
+		<div class="chat-kaart">
+			<h2>Gesprek</h2>
+
+			{#if chatBerichten.length > 0}
+				<div class="chat-berichten">
+					{#each chatBerichten as bericht}
+						<div class="bericht {bericht.rol}">
+							<p>{bericht.tekst}</p>
+						</div>
+					{/each}
+					{#if chatStatus === 'denken'}
+						<div class="bericht assistent denken">
+							<p>Even denken…</p>
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="chat-invoer-rij">
+				<textarea
+					class="chat-invoer"
+					placeholder="Stel een vraag…"
+					rows="2"
+					bind:value={chatInvoer}
+					onkeydown={handleChatToets}
+					disabled={chatStatus === 'denken'}
+				></textarea>
+				<button
+					class="stuur-knop"
+					disabled={chatStatus === 'denken' || !chatInvoer.trim()}
+					onclick={stuurBericht}
+				>
+					{chatStatus === 'denken' ? '…' : 'Stuur'}
+				</button>
+			</div>
+
+			{#if chatFout}
+				<p class="chat-fout">{chatFout}</p>
+			{/if}
+		</div>
+	</section>
+
 	<section class="info-section">
 		<div class="info-kaart">
 			<h2>Welkom bij Herinneringen</h2>
@@ -234,6 +327,10 @@ helpt je ze te bewaren en terug te vinden.
 		<div class="status-banner">
 			<span class="status-dot online"></span>
 			<span>Tekst-naar-spraak actief via Piper + Parkiet (NL)</span>
+		</div>
+		<div class="status-banner">
+			<span class="status-dot online"></span>
+			<span>Taalmodel actief via Ollama Llama 3 8B (NL)</span>
 		</div>
 	</section>
 </div>
@@ -464,5 +561,121 @@ helpt je ze te bewaren en terug te vinden.
 
 	.status-dot.online {
 		background: #22c55e;
+	}
+
+	/* Chat panel */
+	.chat-section {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.chat-kaart {
+		background: #16213e;
+		border: 1px solid #0f3460;
+		border-radius: 1rem;
+		padding: 1.25rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+
+	.chat-kaart h2 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: #eaeaea;
+		margin: 0;
+	}
+
+	.chat-berichten {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-height: 300px;
+		overflow-y: auto;
+	}
+
+	.bericht {
+		border-radius: 0.75rem;
+		padding: 0.625rem 0.875rem;
+		max-width: 85%;
+	}
+
+	.bericht p {
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.5;
+		white-space: pre-wrap;
+	}
+
+	.bericht.gebruiker {
+		background: #e94560;
+		color: white;
+		align-self: flex-end;
+	}
+
+	.bericht.assistent {
+		background: #0f3460;
+		color: #eaeaea;
+		align-self: flex-start;
+	}
+
+	.bericht.denken p {
+		color: #888;
+		font-style: italic;
+	}
+
+	.chat-invoer-rij {
+		display: flex;
+		gap: 0.75rem;
+		align-items: flex-end;
+	}
+
+	.chat-invoer {
+		flex: 1;
+		background: #0f3460;
+		border: 1px solid #1a4080;
+		border-radius: 0.5rem;
+		padding: 0.625rem 0.75rem;
+		color: #eaeaea;
+		font-size: 0.9rem;
+		font-family: inherit;
+		resize: none;
+		box-sizing: border-box;
+	}
+
+	.chat-invoer:focus {
+		outline: none;
+		border-color: #e94560;
+	}
+
+	.chat-invoer:disabled {
+		opacity: 0.6;
+	}
+
+	.stuur-knop {
+		background: linear-gradient(135deg, #e94560, #c23152);
+		border: none;
+		border-radius: 0.5rem;
+		padding: 0.5rem 1.25rem;
+		color: white;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: opacity 0.15s;
+		white-space: nowrap;
+		align-self: flex-end;
+	}
+
+	.stuur-knop:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.chat-fout {
+		font-size: 0.875rem;
+		color: #e94560;
+		margin: 0;
 	}
 </style>

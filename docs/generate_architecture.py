@@ -23,7 +23,7 @@ PHASE_STATUS = {
     1: True,   # PWA basis
     2: True,   # STT Parakeet
     3: True,   # TTS Parkiet + Piper
-    4: False,  # LLM Ollama
+    4: True,   # LLM Ollama
     5: False,  # News briefing
     6: False,  # Calendar
     7: False,  # Hardening

@@ -28,7 +28,8 @@ Personal AI assistant that runs entirely local on a home server (RTX 3060 Ti). D
 | POST   | `/api/stt`              | Audio → text (Dutch, Parakeet)    | Done   |
 | POST   | `/api/tts/synthesize`   | Text → WAV audio (Piper/Parkiet)  | Done   |
 | GET    | `/api/tts/engines`      | List available TTS engines        | Done   |
-| POST   | `/api/chat`             | LLM conversation                  | Phase 4|
+| POST   | `/api/chat`             | LLM conversation (Ollama)         | Done   |
+| POST   | `/api/summarize`        | News article → 4-sentence summary | Done   |
 
 ## Quick Start
 
@@ -46,7 +47,7 @@ cd backend && uvicorn app.main:app --reload  # :8000
 - [x] Phase 1 — PWA basis
 - [x] Phase 2 — STT (Parakeet)
 - [x] Phase 3 — TTS (Parkiet + Piper fallback)
-- [ ] Phase 4 — LLM (Ollama)
+- [x] Phase 4 — LLM (Ollama)
 - [ ] Phase 5 — News briefing (cron 04:30)
 - [ ] Phase 6 — Calendar (Outlook)
 - [ ] Phase 7 — Hardening
