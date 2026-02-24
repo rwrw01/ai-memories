@@ -114,8 +114,8 @@ curl -X POST -F "audio=@scripts/test-audio/test-1min.wav" http://localhost:8000/
 - [x] Phase 1: PWA Frontend (SvelteKit + Service Worker + IndexedDB)
 - [x] Phase 2: STT Parakeet (audio transcription)
 - [x] Phase 2.5: Dictafoon stability (body size, timer, error handling)
-- [ ] Phase 3: TTS Parkiet (Dutch text-to-speech)
-- [ ] Phase 4: LLM Ollama (local chat)
-- [ ] Phase 5: News Briefing (pre-rendered audio via cron)
+- [x] Phase 3: TTS Parkiet (Dutch text-to-speech)
+- [x] Phase 4: LLM Ollama (local chat)
+- [x] Phase 5: News Briefing (pre-rendered audio via cron)
 - [ ] Phase 6: Calendar Outlook
 - [ ] Phase 7: Hardening
