@@ -8,7 +8,7 @@ STT_URL = "http://stt:8001/api/stt"
 @router.post("/api/stt")
 async def speech_to_text(audio: UploadFile = File(...)):
     """Proxy audio upload to the STT service and return its transcription."""
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=600) as client:
         try:
             resp = await client.post(
                 STT_URL,

@@ -1,300 +1,361 @@
 <script lang="ts">
-	// --- STT state ---
-	let status = $state<'idle' | 'luisteren' | 'verwerken' | 'fout'>('idle');
-	let transcriptie = $state('');
+	import { onMount } from 'svelte';
+	import { isWakeLockSupported } from '$lib/dictafoon/wake-lock';
+	import {
+		startRecording,
+		stopRecording,
+		isRecording,
+		hasInterruptedRecording,
+		recoverInterruptedRecording,
+		discardInterruptedRecording
+	} from '$lib/dictafoon/recorder';
+	import {
+		getDictaten,
+		getIsLoaded,
+		loadDictaten,
+		saveDictaat,
+		deleteDictaat,
+		transcribeDictaat,
+		type Dictaat
+	} from '$lib/dictafoon/store.svelte';
+
+	let recording = $state(false);
+	let elapsed = $state(0);
 	let foutmelding = $state('');
+	let hasInterrupted = $state(false);
+	let copiedId = $state<string | null>(null);
 
-	const statusTekst: Record<typeof status, string> = {
-		idle: 'Tik om te spreken',
-		luisteren: 'Ik luister...',
-		verwerken: 'Even geduld...',
-		fout: 'Er ging iets mis'
-	};
+	let dictaten = $derived(getDictaten());
+	let isLoaded = $derived(getIsLoaded());
 
-	// Persistent mic stream — cached across recordings, avoids re-prompting
-	let cachedStream: MediaStream | null = null;
-	let mediaRecorder: MediaRecorder | null = null;
-	let audioChunks: Blob[] = [];
-
-	async function getMicStream(): Promise<MediaStream> {
-		if (cachedStream?.active) return cachedStream;
-		cachedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-		return cachedStream;
+	function formatTijd(seconds: number): string {
+		const h = Math.floor(seconds / 3600);
+		const m = Math.floor((seconds % 3600) / 60);
+		const s = seconds % 60;
+		const mm = String(m).padStart(2, '0');
+		const ss = String(s).padStart(2, '0');
+		return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 	}
 
-	function getSupportedMimeType(): string {
-		const candidates = [
-			'audio/webm;codecs=opus',
-			'audio/webm',
-			'audio/ogg;codecs=opus',
-			'audio/mp4'
-		];
-		return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+	function formatDatum(ts: number): string {
+		const d = new Date(ts);
+		const maanden = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+		return `${d.getDate()} ${maanden[d.getMonth()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 	}
 
-	async function startOpname() {
+	function formatDuur(s: number): string {
+		if (s >= 3600) return `${Math.floor(s / 3600)}u${Math.floor((s % 3600) / 60)}m`;
+		if (s >= 60) return `${Math.floor(s / 60)}m`;
+		return `${s}s`;
+	}
+
+	function statusLabel(status: Dictaat['status']): string {
+		switch (status) {
+			case 'gereed': return '';
+			case 'bezig': return 'Transcriberen...';
+			case 'wacht': return 'Wacht op verwerking';
+			case 'fout': return 'Mislukt';
+		}
+	}
+
+	async function toggleRecording() {
 		foutmelding = '';
-		transcriptie = '';
-
-		let stream: MediaStream;
-		try {
-			stream = await getMicStream();
-		} catch {
-			foutmelding = 'Geen toegang tot microfoon';
-			status = 'fout';
+		if (recording) {
+			stopRecording();
+			recording = false;
 			return;
 		}
-
-		const mimeType = getSupportedMimeType();
-		mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-		audioChunks = [];
-
-		mediaRecorder.ondataavailable = (e) => {
-			if (e.data.size > 0) audioChunks.push(e.data);
-		};
-
-		mediaRecorder.onstop = async () => {
-			await verstuurAudio(mimeType);
-		};
-
-		mediaRecorder.start();
-		status = 'luisteren';
-	}
-
-	function stopOpname() {
-		if (mediaRecorder?.state === 'recording') {
-			status = 'verwerken';
-			mediaRecorder.stop();
-		}
-		// Do NOT stop cachedStream tracks — keeps mic permission persistent
-	}
-
-	async function verstuurAudio(mimeType: string) {
-		const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-		const form = new FormData();
-		form.append('audio', blob, 'opname.webm');
-
 		try {
-			const res = await fetch('/api/stt', { method: 'POST', body: form });
-
-			if (!res.ok) {
-				const err = await res.json().catch(() => ({ detail: res.statusText }));
-				throw new Error(err.detail ?? 'Onbekende fout');
-			}
-
-			const data = await res.json();
-			transcriptie = data.text ?? '';
-			status = 'idle';
-		} catch (err) {
-			foutmelding = err instanceof Error ? err.message : 'Verbindingsfout';
-			status = 'fout';
+			await startRecording(
+				(secs) => { elapsed = secs; },
+				async (blob, mimeType, duration) => {
+					recording = false;
+					elapsed = 0;
+					const dictaat = await saveDictaat(blob, mimeType, duration);
+					transcribeDictaat(dictaat);
+				}
+			);
+			recording = true;
+			elapsed = 0;
+		} catch {
+			foutmelding = 'Geen toegang tot microfoon';
 		}
 	}
 
-	function handleMicKlik() {
-		if (status === 'luisteren') {
-			stopOpname();
-		} else if (status === 'idle' || status === 'fout') {
-			startOpname();
+	async function handleRecover() {
+		const recovered = await recoverInterruptedRecording();
+		if (recovered) {
+			const dictaat = await saveDictaat(recovered.blob, recovered.mimeType, recovered.duration);
+			transcribeDictaat(dictaat);
 		}
+		hasInterrupted = false;
 	}
 
+	async function handleDiscard() {
+		await discardInterruptedRecording();
+		hasInterrupted = false;
+	}
+
+	async function copyText(tekst: string, id: string) {
+		await navigator.clipboard.writeText(tekst);
+		copiedId = id;
+		setTimeout(() => { copiedId = null; }, 1500);
+	}
+
+	onMount(async () => {
+		await loadDictaten();
+		hasInterrupted = await hasInterruptedRecording();
+	});
 </script>
 
-<div class="home">
-	<section class="record-section">
+<div class="page">
+	{#if hasInterrupted}
+		<div class="banner">
+			<span>Onafgeronde opname gevonden</span>
+			<div class="banner-actions">
+				<button class="link" onclick={handleRecover}>Herstellen</button>
+				<button class="link dim" onclick={handleDiscard}>Verwijderen</button>
+			</div>
+		</div>
+	{/if}
+
+	<section class="recorder">
+		<span class="timer" class:active={recording}>{formatTijd(elapsed)}</span>
+
 		<button
-			class="mic-button"
-			class:active={status === 'luisteren'}
-			disabled={status === 'verwerken'}
-			aria-label="Spreek een herinnering in"
-			onclick={handleMicKlik}
+			class="rec-btn"
+			class:recording
+			onclick={toggleRecording}
+			aria-label={recording ? 'Stop opname' : 'Start opname'}
 		>
-			<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="currentColor">
-				<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 0 0-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
-			</svg>
+			{#if recording}
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+			{:else}
+				<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+			{/if}
 		</button>
 
-		<p class="status-tekst" class:actief={status !== 'idle'}>
-			{statusTekst[status]}
-		</p>
+		<span class="label">
+			{#if recording}Tik om te stoppen{:else}Opnemen{/if}
+		</span>
+
+		{#if foutmelding}
+			<span class="error">{foutmelding}</span>
+		{/if}
 	</section>
 
-	{#if transcriptie}
-		<section class="transcriptie-section">
-			<div class="transcriptie-kaart">
-				<p class="transcriptie-tekst">{transcriptie}</p>
-			</div>
+	{#if isLoaded && dictaten.length > 0}
+		<section class="history">
+			<h2 class="section-label">Opnames</h2>
+
+			<ul class="list">
+				{#each dictaten as d (d.id)}
+					<li class="item">
+						<div class="item-meta">
+							<span class="meta-date">{formatDatum(d.datum)}</span>
+							<span class="meta-sep">&middot;</span>
+							<span class="meta-dur">{formatDuur(d.duur)}</span>
+							{#if d.status !== 'gereed'}
+								<span class="meta-status" class:fout={d.status === 'fout'}>{statusLabel(d.status)}</span>
+							{/if}
+						</div>
+
+						{#if d.transcriptie}
+							<p class="item-text">{d.transcriptie}</p>
+						{/if}
+
+						<div class="item-actions">
+							{#if d.transcriptie}
+								<button class="link" onclick={() => copyText(d.transcriptie!, d.id)}>
+									{copiedId === d.id ? 'Gekopieerd' : 'Kopieer'}
+								</button>
+							{/if}
+							{#if d.status === 'fout'}
+								<button class="link" onclick={() => transcribeDictaat(d)}>Opnieuw</button>
+							{/if}
+							<button class="link dim" onclick={() => deleteDictaat(d.id)}>Verwijder</button>
+						</div>
+					</li>
+				{/each}
+			</ul>
 		</section>
 	{/if}
-
-	{#if foutmelding}
-		<section class="fout-section">
-			<div class="fout-kaart">
-				<p>{foutmelding}</p>
-			</div>
-		</section>
-	{/if}
-
-	<section class="info-section">
-		<div class="info-kaart">
-			<h2>Welkom bij Herinneringen</h2>
-			<p>
-				Spreek je gedachten, taken of herinneringen in en de assistent
-helpt je ze te bewaren en terug te vinden.
-			</p>
-		</div>
-
-		<div class="status-banner">
-			<span class="status-dot online"></span>
-			<span>Spraakherkenning actief via Parakeet TDT v3 (NL)</span>
-		</div>
-	</section>
 </div>
 
 <style>
-	.home {
+	.page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		padding: 0 1rem 2rem;
+	}
+
+	/* Recovery banner */
+	.banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.625rem 0.875rem;
+		margin-top: 0.75rem;
+		background: rgba(255, 255, 255, 0.04);
+		border-radius: 10px;
+		font-size: 0.8125rem;
+		color: rgba(255, 255, 255, 0.7);
+	}
+	.banner-actions {
+		display: flex;
+		gap: 0.75rem;
+	}
+
+	/* Recorder */
+	.recorder {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2rem;
-		padding: 2rem 1.25rem;
-		min-height: 100%;
+		gap: 0.875rem;
+		padding: 2.5rem 0 1.5rem;
 	}
 
-	.record-section {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.25rem;
-		margin-top: 1rem;
+	.timer {
+		font-size: 3.25rem;
+		font-weight: 200;
+		font-variant-numeric: tabular-nums;
+		color: rgba(255, 255, 255, 0.2);
+		transition: color 0.2s;
+		letter-spacing: 0.02em;
+	}
+	.timer.active {
+		color: #fff;
 	}
 
-	.mic-button {
-		width: 120px;
-		height: 120px;
+	.rec-btn {
+		width: 72px;
+		height: 72px;
 		border-radius: 50%;
 		border: none;
-		background: linear-gradient(135deg, #e94560, #c23152);
-		color: white;
+		background: #d63031;
+		color: #fff;
 		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		box-shadow: 0 4px 24px rgba(233, 69, 96, 0.4);
-		transition: transform 0.15s, box-shadow 0.15s;
+		display: grid;
+		place-items: center;
+		transition: transform 0.1s, opacity 0.15s;
 	}
-
-	.mic-button:hover:not(:disabled) {
-		transform: scale(1.05);
-		box-shadow: 0 6px 32px rgba(233, 69, 96, 0.55);
+	.rec-btn:active {
+		transform: scale(0.93);
 	}
-
-	.mic-button:active:not(:disabled) {
-		transform: scale(0.97);
-	}
-
-	.mic-button.active {
-		animation: pulse 1.5s ease-in-out infinite;
-	}
-
-	.mic-button:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
+	.rec-btn.recording {
+		animation: pulse 2s ease-in-out infinite;
 	}
 
 	@keyframes pulse {
-		0%, 100% { box-shadow: 0 4px 24px rgba(233, 69, 96, 0.4); }
-		50% { box-shadow: 0 4px 48px rgba(233, 69, 96, 0.8); }
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.6; }
 	}
 
-	.status-tekst {
-		font-size: 1rem;
-		color: #888;
-		transition: color 0.2s;
+	.label {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.3);
+		letter-spacing: 0.02em;
 	}
 
-	.status-tekst.actief {
-		color: #e94560;
+	.error {
+		font-size: 0.8125rem;
+		color: #d63031;
 	}
 
-	.transcriptie-section,
-	.fout-section,
-	.info-section {
-		width: 100%;
+	/* History */
+	.history {
 		display: flex;
 		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.section-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.3);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		padding-left: 0.125rem;
+	}
+
+	.list {
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.item {
+		background: rgba(255, 255, 255, 0.04);
+		border-radius: 10px;
+		padding: 0.75rem 0.875rem;
+	}
+
+	.item-meta {
+		display: flex;
+		align-items: baseline;
+		gap: 0.375rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.meta-date {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.6);
+	}
+
+	.meta-sep {
+		color: rgba(255, 255, 255, 0.15);
+	}
+
+	.meta-dur {
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.25);
+	}
+
+	.meta-status {
+		font-size: 0.6875rem;
+		color: rgba(255, 255, 255, 0.3);
+		margin-left: auto;
+	}
+	.meta-status.fout {
+		color: #d63031;
+	}
+
+	.item-text {
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: rgba(255, 255, 255, 0.55);
+		margin-bottom: 0.5rem;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.item-actions {
+		display: flex;
 		gap: 1rem;
 	}
 
-	.transcriptie-kaart {
-		background: #16213e;
-		border: 1px solid #0f3460;
-		border-radius: 1rem;
-		padding: 1.25rem;
+	/* Shared link-style buttons */
+	.link {
+		background: none;
+		border: none;
+		font-family: inherit;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.6);
+		cursor: pointer;
+		padding: 0;
+		transition: color 0.1s;
 	}
-
-	.transcriptie-tekst {
-		font-size: 1rem;
-		color: #eaeaea;
-		line-height: 1.6;
-		margin: 0;
+	.link:active {
+		color: #fff;
 	}
-
-	.fout-kaart {
-		background: #2a1020;
-		border: 1px solid #e94560;
-		border-radius: 1rem;
-		padding: 1rem 1.25rem;
-		font-size: 0.875rem;
-		color: #e94560;
+	.link.dim {
+		color: rgba(255, 255, 255, 0.25);
 	}
-
-	.fout-kaart p {
-		margin: 0;
-	}
-
-	.info-kaart {
-		background: #16213e;
-		border: 1px solid #0f3460;
-		border-radius: 1rem;
-		padding: 1.25rem;
-	}
-
-	.info-kaart h2 {
-		font-size: 1rem;
-		font-weight: 600;
-		margin-bottom: 0.5rem;
-		color: #eaeaea;
-	}
-
-	.info-kaart p {
-		font-size: 0.875rem;
-		color: #aaa;
-		line-height: 1.5;
-	}
-
-	.status-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		background: #16213e;
-		border: 1px solid #0f3460;
-		border-radius: 0.75rem;
-		padding: 0.75rem 1rem;
-		font-size: 0.8rem;
-		color: #888;
-	}
-
-	.status-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-
-	.status-dot.online {
-		background: #22c55e;
-	}
-
 </style>
