@@ -5,3 +5,7 @@ dist/
 .env
 .DS_Store
 *.log
+
+# Generated test audio (large WAV files)
+scripts/test-audio/
+*.wav

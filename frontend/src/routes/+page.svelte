@@ -24,6 +24,7 @@
 	let foutmelding = $state('');
 	let hasInterrupted = $state(false);
 	let copiedId = $state<string | null>(null);
+	let laadFout = $state('');
 
 	let dictaten = $derived(getDictaten());
 	let isLoaded = $derived(getIsLoaded());
@@ -49,12 +50,12 @@
 		return `${s}s`;
 	}
 
-	function statusLabel(status: Dictaat['status']): string {
-		switch (status) {
+	function statusLabel(d: Dictaat): string {
+		switch (d.status) {
 			case 'gereed': return '';
 			case 'bezig': return 'Transcriberen...';
 			case 'wacht': return 'Wacht op verwerking';
-			case 'fout': return 'Mislukt';
+			case 'fout': return d.foutReden ?? 'Mislukt';
 		}
 	}
 
@@ -72,7 +73,7 @@
 					recording = false;
 					elapsed = 0;
 					const dictaat = await saveDictaat(blob, mimeType, duration);
-					transcribeDictaat(dictaat);
+					await transcribeDictaat(dictaat);
 				}
 			);
 			recording = true;
@@ -86,7 +87,7 @@
 		const recovered = await recoverInterruptedRecording();
 		if (recovered) {
 			const dictaat = await saveDictaat(recovered.blob, recovered.mimeType, recovered.duration);
-			transcribeDictaat(dictaat);
+			await transcribeDictaat(dictaat);
 		}
 		hasInterrupted = false;
 	}
@@ -103,12 +104,23 @@
 	}
 
 	onMount(async () => {
-		await loadDictaten();
-		hasInterrupted = await hasInterruptedRecording();
+		try {
+			await loadDictaten();
+			hasInterrupted = await hasInterruptedRecording();
+		} catch (e) {
+			console.error('Laden mislukt:', e);
+			laadFout = 'Kan gegevens niet laden. Probeer de pagina te herladen.';
+		}
 	});
 </script>
 
 <div class="page">
+	{#if laadFout}
+		<div class="banner error-banner">
+			<span>{laadFout}</span>
+		</div>
+	{/if}
+
 	{#if hasInterrupted}
 		<div class="banner">
 			<span>Onafgeronde opname gevonden</span>
@@ -156,7 +168,7 @@
 							<span class="meta-sep">&middot;</span>
 							<span class="meta-dur">{formatDuur(d.duur)}</span>
 							{#if d.status !== 'gereed'}
-								<span class="meta-status" class:fout={d.status === 'fout'}>{statusLabel(d.status)}</span>
+								<span class="meta-status" class:fout={d.status === 'fout'}>{statusLabel(d)}</span>
 							{/if}
 						</div>
 
@@ -201,6 +213,9 @@
 		border-radius: 10px;
 		font-size: 0.8125rem;
 		color: rgba(255, 255, 255, 0.7);
+	}
+	.error-banner {
+		color: #d63031;
 	}
 	.banner-actions {
 		display: flex;

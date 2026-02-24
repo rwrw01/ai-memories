@@ -33,6 +33,7 @@ let elapsedSeconds = 0;
 let onTickCallback: ((seconds: number) => void) | null = null;
 let onStopCallback: ((blob: Blob, mimeType: string, duration: number) => void) | null = null;
 let currentMimeType = '';
+let isStarting = false;
 
 export function isRecording(): boolean {
 	return mediaRecorder?.state === 'recording';
@@ -46,62 +47,75 @@ export async function startRecording(
 	onTick: (seconds: number) => void,
 	onStop: (blob: Blob, mimeType: string, duration: number) => void
 ): Promise<void> {
-	await clearChunks();
+	if (isStarting) return;
+	isStarting = true;
 
-	const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-	currentMimeType = getSupportedMimeType();
-	mediaRecorder = new MediaRecorder(stream, currentMimeType ? { mimeType: currentMimeType } : undefined);
-	chunkIndex = 0;
-	memoryChunks = [];
-	elapsedSeconds = 0;
-	onTickCallback = onTick;
-	onStopCallback = onStop;
-
-	await set(RECORDING_META, {
-		mimeType: currentMimeType || 'audio/webm',
-		startedAt: Date.now(),
-		chunkCount: 0
-	} satisfies RecordingMeta);
-
-	mediaRecorder.ondataavailable = (e) => {
-		if (e.data.size > 0) {
-			// In-memory for immediate use on stop
-			memoryChunks.push(e.data);
-
-			// Async IndexedDB write for crash recovery (fire-and-forget)
-			const idx = chunkIndex++;
-			e.data.arrayBuffer().then((buffer) => {
-				set(`${CHUNK_PREFIX}${idx}`, buffer).then(() => {
-					get<RecordingMeta>(RECORDING_META).then((meta) => {
-						if (meta) {
-							meta.chunkCount = idx + 1;
-							set(RECORDING_META, meta);
-						}
-					});
-				});
-			});
+	try {
+		// Stop any previous recording and timer to prevent stacking
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			mediaRecorder.stop();
 		}
-	};
-
-	mediaRecorder.onstop = async () => {
-		stream.getTracks().forEach((t) => t.stop());
 		stopTimer();
-		await releaseWakeLock();
 
-		// Use in-memory chunks — always complete, no race condition
-		const blob = new Blob(memoryChunks, { type: currentMimeType || 'audio/webm' });
-		const duration = elapsedSeconds;
-		const mime = currentMimeType || 'audio/webm';
-
-		memoryChunks = [];
 		await clearChunks();
 
-		onStopCallback?.(blob, mime, duration);
-	};
+		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		currentMimeType = getSupportedMimeType();
+		mediaRecorder = new MediaRecorder(stream, currentMimeType ? { mimeType: currentMimeType } : undefined);
+		chunkIndex = 0;
+		memoryChunks = [];
+		elapsedSeconds = 0;
+		onTickCallback = onTick;
+		onStopCallback = onStop;
 
-	await requestWakeLock();
-	mediaRecorder.start(10_000);
-	startTimer();
+		await set(RECORDING_META, {
+			mimeType: currentMimeType || 'audio/webm',
+			startedAt: Date.now(),
+			chunkCount: 0
+		} satisfies RecordingMeta);
+
+		mediaRecorder.ondataavailable = (e) => {
+			if (e.data.size > 0) {
+				// In-memory for immediate use on stop
+				memoryChunks.push(e.data);
+
+				// Async IndexedDB write for crash recovery (fire-and-forget)
+				const idx = chunkIndex++;
+				e.data.arrayBuffer().then((buffer) => {
+					set(`${CHUNK_PREFIX}${idx}`, buffer).then(() => {
+						get<RecordingMeta>(RECORDING_META).then((meta) => {
+							if (meta) {
+								meta.chunkCount = idx + 1;
+								set(RECORDING_META, meta);
+							}
+						});
+					});
+				});
+			}
+		};
+
+		mediaRecorder.onstop = async () => {
+			stream.getTracks().forEach((t) => t.stop());
+			stopTimer();
+			await releaseWakeLock();
+
+			// Use in-memory chunks — always complete, no race condition
+			const blob = new Blob(memoryChunks, { type: currentMimeType || 'audio/webm' });
+			const duration = elapsedSeconds;
+			const mime = currentMimeType || 'audio/webm';
+
+			memoryChunks = [];
+			await clearChunks();
+
+			onStopCallback?.(blob, mime, duration);
+		};
+
+		await requestWakeLock();
+		mediaRecorder.start(10_000);
+		startTimer();
+	} finally {
+		isStarting = false;
+	}
 }
 
 export function stopRecording(): void {
@@ -161,6 +175,7 @@ async function clearChunks(): Promise<void> {
 }
 
 function startTimer(): void {
+	if (timerInterval) clearInterval(timerInterval);
 	timerInterval = setInterval(() => {
 		elapsedSeconds++;
 		onTickCallback?.(elapsedSeconds);

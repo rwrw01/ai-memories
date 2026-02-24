@@ -14,6 +14,7 @@ export type Dictaat = {
 	mimeType: string;
 	transcriptie: string | null;
 	status: 'gereed' | 'bezig' | 'wacht' | 'fout';
+	foutReden: string | null;
 };
 
 // Reactive state
@@ -56,7 +57,8 @@ export async function saveDictaat(
 		audioBlob: await blob.arrayBuffer(),
 		mimeType,
 		transcriptie: null,
-		status: 'wacht'
+		status: 'wacht',
+		foutReden: null
 	};
 
 	await set(`${DICTAAT_PREFIX}${id}`, dictaat);
@@ -113,7 +115,9 @@ export async function transcribeDictaat(dictaat: Dictaat): Promise<void> {
 			transcriptie: data.text ?? '',
 			status: 'gereed'
 		});
-	} catch {
-		await updateDictaat(dictaat.id, { status: 'fout' });
+	} catch (e) {
+		const message = e instanceof Error ? e.message : 'Onbekende fout';
+		console.error('Transcriptie mislukt:', message);
+		await updateDictaat(dictaat.id, { status: 'fout', foutReden: message });
 	}
 }

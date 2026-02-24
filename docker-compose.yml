@@ -10,6 +10,7 @@ services:
     environment:
       - ORIGIN=${ORIGIN:-http://localhost:3000}
       - BACKEND_URL=http://backend:8000
+      - BODY_SIZE_LIMIT=52428800
     env_file:
       - path: .env
         required: false
