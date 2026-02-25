@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { NewsArticle } from '$lib/types/news';
+	import { SOURCE_COLORS } from '$lib/data/source-colors';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 
@@ -10,12 +11,6 @@
 	};
 
 	let { articles, currentIndex, onselect }: Props = $props();
-
-	const sourceKleuren: Record<string, string> = {
-		nos: '#0066cc',
-		'nu.nl': '#e67e22',
-		tweakers: '#27ae60'
-	};
 </script>
 
 <ScrollArea class="h-[60vh]">
@@ -29,7 +24,7 @@
 				<span class="size-2 shrink-0 rounded-full {article.audio_ready ? 'bg-green-500' : 'bg-muted-foreground'}"></span>
 				<Badge
 					class="shrink-0 text-[0.65rem] font-bold uppercase text-white"
-					style="background: {sourceKleuren[article.source] ?? '#888'}"
+					style="background: {SOURCE_COLORS[article.source] ?? '#888'}"
 				>
 					{article.source}
 				</Badge>

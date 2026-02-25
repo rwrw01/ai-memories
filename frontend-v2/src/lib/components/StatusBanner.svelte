@@ -1,21 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-
-	type ServiceStatus = 'ok' | 'slow' | 'down';
-	type HealthResponse = {
-		status: 'ok' | 'degraded';
-		services: Record<string, { status: ServiceStatus }>;
-		checked_at: string;
-	};
-
-	const POLL_INTERVAL = 60_000;
-	const SERVICE_LABELS: Record<string, string> = {
-		database: 'Database',
-		stt: 'Spraak-naar-tekst',
-		tts: 'Tekst-naar-spraak',
-		ollama: 'LLM',
-		n8n: 'Automatisering'
-	};
+	import {
+		POLL_INTERVAL,
+		SERVICE_LABELS,
+		type HealthResponse,
+		type ServiceStatus
+	} from '$lib/data/health-config';
 
 	let health = $state<HealthResponse | null>(null);
 	let fetchError = $state(false);

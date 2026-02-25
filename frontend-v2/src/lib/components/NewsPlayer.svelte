@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { NewsArticle } from '$lib/types/news';
+	import { SOURCE_COLORS } from '$lib/data/source-colors';
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import NewsControls from './NewsControls.svelte';
@@ -20,12 +21,6 @@
 	let audioSrc = $derived(
 		currentArticle?.audio_ready ? `/api/news/${currentArticle.id}/audio` : ''
 	);
-
-	const sourceKleuren: Record<string, string> = {
-		nos: '#0066cc',
-		'nu.nl': '#e67e22',
-		tweakers: '#27ae60'
-	};
 
 	function next() {
 		if (currentIndex < articles.length - 1) {
@@ -96,7 +91,7 @@
 				<div class="flex items-center justify-between">
 					<Badge
 						class="text-[0.7rem] font-bold uppercase tracking-wide text-white"
-						style="background: {sourceKleuren[currentArticle.source] ?? '#888'}"
+						style="background: {SOURCE_COLORS[currentArticle.source] ?? '#888'}"
 					>
 						{currentArticle.source}
 					</Badge>

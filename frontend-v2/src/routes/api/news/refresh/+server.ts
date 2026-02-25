@@ -1,13 +1,3 @@
-import { BACKEND } from '$lib/server/backend';
-import type { RequestHandler } from './$types';
+import { proxyPost } from '$lib/server/proxy';
 
-export const POST: RequestHandler = async () => {
-	const resp = await fetch(`${BACKEND}/api/news/refresh`, {
-		method: 'POST'
-	});
-
-	return new Response(resp.body, {
-		status: resp.status,
-		headers: { 'content-type': 'application/json' }
-	});
-};
+export const POST = proxyPost('/api/news/refresh', { body: 'none' });

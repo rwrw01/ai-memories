@@ -1,11 +1,3 @@
-import { BACKEND } from '$lib/server/backend';
-import type { RequestHandler } from './$types';
+import { proxyGet } from '$lib/server/proxy';
 
-export const GET: RequestHandler = async () => {
-	const resp = await fetch(`${BACKEND}/api/news/today`);
-
-	return new Response(resp.body, {
-		status: resp.status,
-		headers: { 'content-type': 'application/json' }
-	});
-};
+export const GET = proxyGet('/api/news/today');
