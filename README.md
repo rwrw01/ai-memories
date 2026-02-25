@@ -55,6 +55,8 @@ iPhone (Safari PWA)
 | GET | `/api/news/:id/audio` | Backend | Pre-rendered news audio |
 | POST | `/api/chat` | LLM | Chat completion |
 | POST | `/api/summarize` | LLM | Text summarization |
+| GET | `/api/health` | Backend | Deep health check (all services) |
+| GET | `/health` | Backend | Quick liveness probe |
 
 ## Quick Start
 

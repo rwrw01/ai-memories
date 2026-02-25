@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import select
@@ -11,11 +11,11 @@ AUDIO_BASE = Path("/data/audio/news")
 
 
 async def get_today_articles(session: AsyncSession) -> list[NewsArticle]:
-    """Get all news articles created today, newest first."""
-    today = date.today().isoformat()
+    """Get news articles from the last 24 hours, newest first."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     stmt = (
         select(NewsArticle)
-        .where(NewsArticle.created_at >= datetime.fromisoformat(f"{today}T00:00:00"))
+        .where(NewsArticle.created_at >= cutoff)
         .order_by(NewsArticle.published_at.desc())
     )
     result = await session.execute(stmt)

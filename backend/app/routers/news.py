@@ -1,9 +1,12 @@
 import json
+import logging
 from datetime import date
 
 import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+
+logger = logging.getLogger(__name__)
 
 from app.database import async_session
 from app.schemas.news import (
@@ -107,8 +110,10 @@ async def news_refresh() -> dict:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post("http://n8n:5678/webhook/news-refresh")
             resp.raise_for_status()
-    except httpx.RequestError:
+    except httpx.RequestError as e:
+        logger.warning("n8n webhook unreachable: %s", e)
         raise HTTPException(status_code=503, detail="n8n niet beschikbaar")
-    except httpx.HTTPStatusError:
+    except httpx.HTTPStatusError as e:
+        logger.warning("n8n webhook failed with %d: %s", e.response.status_code, e.response.text)
         raise HTTPException(status_code=502, detail="n8n webhook mislukt")
     return {"status": "ok", "message": "News refresh triggered"}

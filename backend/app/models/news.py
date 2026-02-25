@@ -36,7 +36,7 @@ class NewsPreferences(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     feeds: Mapped[str] = mapped_column(
         Text,
-        default='["https://feeds.nos.nl/nosnieuwsalgemeen","https://www.nu.nl/rss/Algemeen","https://feeds.tweakers.net/mixed.xml"]',
+        default='["https://feeds.nos.nl/nosnieuwsalgemeen","https://www.nu.nl/rss/Algemeen","https://tweakers.net/feeds/mixed.xml"]',
     )
     max_articles: Mapped[int] = mapped_column(default=20)
     categories_exclude: Mapped[str] = mapped_column(Text, default="[]")

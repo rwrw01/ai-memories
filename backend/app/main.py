@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
+from app.routers.health import check_all as health_check_all
 from app.routers.llm import router as llm_router
 from app.routers.news import router as news_router
 from app.routers.news_ingest import router as news_ingest_router
@@ -49,5 +50,12 @@ app.include_router(news_ingest_router)
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health_simple() -> dict:
+    """Quick liveness probe for Docker / load balancers."""
     return {"status": "ok", "service": "memories-backend"}
+
+
+@app.get("/api/health")
+async def health_detailed() -> dict:
+    """Deep health check — probes all downstream services in parallel."""
+    return await health_check_all()
