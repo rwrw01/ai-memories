@@ -2,6 +2,7 @@
 // Uses Svelte 5 runes for reactive state.
 
 import { get, set, del, keys } from 'idb-keyval';
+import type { ClassifyResult } from '$lib/types/flow';
 
 const DICTAAT_PREFIX = 'dictaat-';
 const MAX_DICTATEN = 5;
@@ -15,6 +16,8 @@ export type Dictaat = {
 	transcriptie: string | null;
 	status: 'gereed' | 'bezig' | 'wacht' | 'fout';
 	foutReden: string | null;
+	classificatie: ClassifyResult | null;
+	flowExecutionId: string | null;
 };
 
 // Reactive state
@@ -58,7 +61,9 @@ export async function saveDictaat(
 		mimeType,
 		transcriptie: null,
 		status: 'wacht',
-		foutReden: null
+		foutReden: null,
+		classificatie: null,
+		flowExecutionId: null
 	};
 
 	await set(`${DICTAAT_PREFIX}${id}`, dictaat);
@@ -119,5 +124,50 @@ export async function transcribeDictaat(dictaat: Dictaat): Promise<void> {
 		const message = e instanceof Error ? e.message : 'Onbekende fout';
 		console.error('Transcriptie mislukt:', message);
 		await updateDictaat(dictaat.id, { status: 'fout', foutReden: message });
+	}
+}
+
+export async function classifyDictaat(dictaat: Dictaat): Promise<void> {
+	if (!dictaat.transcriptie) return;
+
+	try {
+		const res = await fetch('/api/classify', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ text: dictaat.transcriptie })
+		});
+		if (!res.ok) throw new Error('Classificatie mislukt');
+		const data: ClassifyResult = await res.json();
+		await updateDictaat(dictaat.id, { classificatie: data });
+	} catch (e) {
+		console.error('Classificatie mislukt:', e);
+		// Fallback to aantekening on error
+		await updateDictaat(dictaat.id, {
+			classificatie: { intent: 'aantekening', params: { tekst: dictaat.transcriptie }, confidence: 1.0 }
+		});
+	}
+}
+
+export async function executeDictaatFlow(
+	dictaat: Dictaat,
+	params?: Record<string, string>
+): Promise<void> {
+	if (!dictaat.classificatie) return;
+
+	try {
+		const res = await fetch('/api/flow/execute', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				intent: dictaat.classificatie.intent,
+				params: params ?? dictaat.classificatie.params,
+				source_text: dictaat.transcriptie ?? ''
+			})
+		});
+		if (!res.ok) throw new Error('Uitvoering mislukt');
+		const data = await res.json();
+		await updateDictaat(dictaat.id, { flowExecutionId: data.execution_id });
+	} catch (e) {
+		console.error('Flow uitvoering mislukt:', e);
 	}
 }

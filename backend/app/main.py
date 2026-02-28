@@ -7,12 +7,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
+from app.routers.classify import router as classify_router
+from app.routers.flow import router as flow_router
 from app.routers.health import check_all as health_check_all
 from app.routers.llm import router as llm_router
 from app.routers.news import router as news_router
 from app.routers.news_ingest import router as news_ingest_router
 from app.routers.stt import router as stt_router
 from app.routers.tts import router as tts_router
+from app.routers.whatsapp import router as whatsapp_router
 from app.services.cleanup_service import daily_cleanup_loop
 
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +48,9 @@ app.add_middleware(
 app.include_router(stt_router)
 app.include_router(tts_router)
 app.include_router(llm_router)
+app.include_router(classify_router)
+app.include_router(flow_router)
+app.include_router(whatsapp_router)
 app.include_router(news_router)
 app.include_router(news_ingest_router)
 

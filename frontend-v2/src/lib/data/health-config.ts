@@ -15,7 +15,8 @@ export const SERVICE_LABELS: Record<string, string> = {
 	stt: 'Spraak-naar-tekst',
 	tts: 'Tekst-naar-spraak',
 	ollama: 'LLM',
-	n8n: 'Automatisering'
+	n8n: 'Automatisering',
+	whatsapp: 'WhatsApp'
 };
 
 export const STATUS_LABELS: Record<ServiceStatus, string> = {

@@ -250,4 +250,6 @@
 			Opslaan
 		{/if}
 	</Button>
+
+	<p class="mt-4 text-center text-xs text-muted-foreground/30">Herinneringen v2.0</p>
 </div>

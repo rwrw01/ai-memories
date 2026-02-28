@@ -17,10 +17,10 @@ type RecordingMeta = {
 
 function getSupportedMimeType(): string {
 	const candidates = [
+		'audio/mp4',
 		'audio/webm;codecs=opus',
 		'audio/webm',
-		'audio/ogg;codecs=opus',
-		'audio/mp4'
+		'audio/ogg;codecs=opus'
 	];
 	return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
 }
@@ -32,6 +32,7 @@ let timerInterval: ReturnType<typeof setInterval> | null = null;
 let elapsedSeconds = 0;
 let onTickCallback: ((seconds: number) => void) | null = null;
 let onStopCallback: ((blob: Blob, mimeType: string, duration: number) => void) | null = null;
+let onErrorCallback: ((message: string) => void) | null = null;
 let currentMimeType = '';
 let isStarting = false;
 
@@ -45,7 +46,8 @@ export function getElapsed(): number {
 
 export async function startRecording(
 	onTick: (seconds: number) => void,
-	onStop: (blob: Blob, mimeType: string, duration: number) => void
+	onStop: (blob: Blob, mimeType: string, duration: number) => void,
+	onError?: (message: string) => void
 ): Promise<void> {
 	if (isStarting) return;
 	isStarting = true;
@@ -59,7 +61,13 @@ export async function startRecording(
 
 		await clearChunks();
 
-		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const stream = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				echoCancellation: { ideal: true },
+				noiseSuppression: { ideal: true },
+				autoGainControl: { ideal: true }
+			}
+		});
 		currentMimeType = getSupportedMimeType();
 		mediaRecorder = new MediaRecorder(stream, currentMimeType ? { mimeType: currentMimeType } : undefined);
 		chunkIndex = 0;
@@ -67,12 +75,29 @@ export async function startRecording(
 		elapsedSeconds = 0;
 		onTickCallback = onTick;
 		onStopCallback = onStop;
+		onErrorCallback = onError ?? null;
 
 		await set(RECORDING_META, {
 			mimeType: currentMimeType || 'audio/webm',
 			startedAt: Date.now(),
 			chunkCount: 0
 		} satisfies RecordingMeta);
+
+		mediaRecorder.onerror = (event) => {
+			console.error('MediaRecorder error:', event);
+			onErrorCallback?.('Opname mislukt door een apparaatfout.');
+			stopRecording();
+		};
+
+		// Detect Bluetooth/device disconnect mid-recording
+		stream.getAudioTracks().forEach((track) => {
+			track.onended = () => {
+				console.warn('Audio track ended unexpectedly');
+				if (mediaRecorder?.state === 'recording') {
+					mediaRecorder.stop();
+				}
+			};
+		});
 
 		mediaRecorder.ondataavailable = (e) => {
 			if (e.data.size > 0) {
@@ -107,10 +132,18 @@ export async function startRecording(
 			memoryChunks = [];
 			await clearChunks();
 
+			if (blob.size === 0) {
+				onErrorCallback?.('Geen audio opgenomen. Controleer je microfoon.');
+				return;
+			}
+
 			onStopCallback?.(blob, mime, duration);
 		};
 
-		await requestWakeLock();
+		const wakeLockOk = await requestWakeLock();
+		if (!wakeLockOk) {
+			console.warn('Wake lock niet beschikbaar — scherm kan in slaapstand gaan');
+		}
 		mediaRecorder.start(10_000);
 		startTimer();
 	} finally {

@@ -6,6 +6,21 @@ services:
   frontend:
     build: ./frontend
     ports:
+      - "3002:3000"
+    environment:
+      - ORIGIN=${ORIGIN:-http://localhost:3002}
+      - BACKEND_URL=http://backend:8000
+      - BODY_SIZE_LIMIT=52428800
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  frontend-v2:
+    build: ./frontend-v2
+    ports:
       - "3000:3000"
     environment:
       - ORIGIN=${ORIGIN:-http://localhost:3000}

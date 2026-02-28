@@ -74,6 +74,11 @@
 					elapsed = 0;
 					const dictaat = await saveDictaat(blob, mimeType, duration);
 					await transcribeDictaat(dictaat);
+				},
+				(message) => {
+					recording = false;
+					elapsed = 0;
+					foutmelding = message;
 				}
 			);
 			recording = true;

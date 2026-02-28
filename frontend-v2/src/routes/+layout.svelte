@@ -4,21 +4,14 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import StatusBanner from '$lib/components/StatusBanner.svelte';
 	import Mic from '@lucide/svelte/icons/mic';
-	import Newspaper from '@lucide/svelte/icons/newspaper';
-	import Settings from '@lucide/svelte/icons/settings';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import '../app.css';
 
 	let { children } = $props();
 
 	const navItems = [
 		{ href: '/', label: 'Dictafoon', icon: Mic, match: (p: string) => p === '/' },
-		{ href: '/nieuws', label: 'Nieuws', icon: Newspaper, match: (p: string) => p === '/nieuws' },
-		{
-			href: '/nieuws/instellingen',
-			label: 'Instellingen',
-			icon: Settings,
-			match: (p: string) => p === '/nieuws/instellingen'
-		}
+		{ href: '/whatsapp', label: 'WhatsApp', icon: MessageCircle, match: (p: string) => p === '/whatsapp' }
 	];
 </script>
 

@@ -16,8 +16,11 @@
 		saveDictaat,
 		deleteDictaat,
 		transcribeDictaat,
+		classifyDictaat,
+		executeDictaatFlow,
 		type Dictaat
 	} from '$lib/dictafoon/store.svelte';
+	import FlowConfirm from '$lib/components/FlowConfirm.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
@@ -34,6 +37,7 @@
 	let hasInterrupted = $state(false);
 	let copiedId = $state<string | null>(null);
 	let laadFout = $state('');
+	let executingId = $state<string | null>(null);
 
 	let dictaten = $derived(getDictaten());
 	let isLoaded = $derived(getIsLoaded());
@@ -83,6 +87,12 @@
 					elapsed = 0;
 					const dictaat = await saveDictaat(blob, mimeType, duration);
 					await transcribeDictaat(dictaat);
+					await classifyDictaat(dictaat);
+				},
+				(message) => {
+					recording = false;
+					elapsed = 0;
+					foutmelding = message;
 				}
 			);
 			recording = true;
@@ -97,6 +107,7 @@
 		if (recovered) {
 			const dictaat = await saveDictaat(recovered.blob, recovered.mimeType, recovered.duration);
 			await transcribeDictaat(dictaat);
+			await classifyDictaat(dictaat);
 		}
 		hasInterrupted = false;
 	}
@@ -110,6 +121,12 @@
 		await navigator.clipboard.writeText(tekst);
 		copiedId = id;
 		setTimeout(() => { copiedId = null; }, 1500);
+	}
+
+	async function handleExecuteFlow(d: Dictaat, _intent: string, params: Record<string, string>) {
+		executingId = d.id;
+		await executeDictaatFlow(d, params);
+		executingId = null;
 	}
 
 	onMount(async () => {
@@ -195,6 +212,14 @@
 
 							{#if d.transcriptie}
 								<p class="mt-1 line-clamp-3 text-sm leading-relaxed text-muted-foreground/55">{d.transcriptie}</p>
+							{/if}
+
+							{#if d.classificatie}
+								<FlowConfirm
+									dictaat={d}
+									onExecute={(intent, params) => handleExecuteFlow(d, intent, params)}
+									executing={executingId === d.id}
+								/>
 							{/if}
 
 							<div class="mt-2 flex gap-4">
