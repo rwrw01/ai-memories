@@ -5,13 +5,15 @@
 	import StatusBanner from '$lib/components/StatusBanner.svelte';
 	import Mic from '@lucide/svelte/icons/mic';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
+	import Settings from '@lucide/svelte/icons/settings';
 	import '../app.css';
 
 	let { children } = $props();
 
 	const navItems = [
 		{ href: '/', label: 'Dictafoon', icon: Mic, match: (p: string) => p === '/' },
-		{ href: '/whatsapp', label: 'WhatsApp', icon: MessageCircle, match: (p: string) => p === '/whatsapp' }
+		{ href: '/whatsapp', label: 'WhatsApp', icon: MessageCircle, match: (p: string) => p === '/whatsapp' },
+		{ href: '/instellingen', label: 'Instellingen', icon: Settings, match: (p: string) => p.startsWith('/instellingen') }
 	];
 </script>
 
