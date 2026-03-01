@@ -8,7 +8,7 @@ from app.services.http_client import service_retry
 
 logger = logging.getLogger(__name__)
 OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-MODEL = "llama3:8b-instruct-q4_K_M"
+MODEL = "qwen3:8b"
 
 SUMMARIZE_SYSTEM = """Je bent een Nederlandse nieuwslezer.
 Vat het artikel samen in exact 4 zinnen.
