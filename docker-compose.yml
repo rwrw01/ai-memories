@@ -21,9 +21,10 @@ services:
   frontend-v2:
     build: ./frontend-v2
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     environment:
-      - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - ORIGIN=${ORIGIN:-http://100.115.120.56:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       - BACKEND_URL=http://backend:8000
       - BODY_SIZE_LIMIT=52428800
       - API_KEY=${API_KEY:-}
