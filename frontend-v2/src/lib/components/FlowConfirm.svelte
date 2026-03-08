@@ -6,6 +6,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import Send from '@lucide/svelte/icons/send';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import Clock from '@lucide/svelte/icons/clock';
 	import StickyNote from '@lucide/svelte/icons/sticky-note';
 	import type { FlowIntent } from '$lib/types/flow';
 	import type { Dictaat } from '$lib/dictafoon/store.svelte';
@@ -30,6 +31,7 @@
 	const intentConfig: Record<FlowIntent, { label: string; icon: typeof Send; color: string }> = {
 		whatsapp: { label: 'WhatsApp', icon: Send, color: 'bg-green-600/15 text-green-400 border-green-600/30' },
 		artikel: { label: 'Artikel', icon: FileText, color: 'bg-blue-600/15 text-blue-400 border-blue-600/30' },
+		uren: { label: 'Uren', icon: Clock, color: 'bg-orange-600/15 text-orange-400 border-orange-600/30' },
 		aantekening: { label: 'Aantekening', icon: StickyNote, color: 'bg-muted text-muted-foreground border-muted' }
 	};
 </script>
@@ -67,6 +69,14 @@
 					<Input
 						bind:value={editParams.onderwerp}
 						placeholder="Onderwerp"
+						class="h-8 text-sm"
+					/>
+				</div>
+			{:else if classificatie.intent === 'uren'}
+				<div class="flex flex-col gap-1.5">
+					<Input
+						bind:value={editParams.tekst}
+						placeholder="Bijv. 8 uur project alpha"
 						class="h-8 text-sm"
 					/>
 				</div>

@@ -1,4 +1,4 @@
-export type FlowIntent = 'whatsapp' | 'artikel' | 'aantekening';
+export type FlowIntent = 'whatsapp' | 'artikel' | 'uren' | 'aantekening';
 
 export type ClassifyResult = {
 	intent: FlowIntent;

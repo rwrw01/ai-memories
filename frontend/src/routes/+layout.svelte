@@ -19,6 +19,12 @@
 			</svg>
 			<span>Dictafoon</span>
 		</a>
+		<a href="/artikelen" class="nav-item" class:active={$page.url.pathname === '/artikelen'} aria-label="Artikelen">
+			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+				<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+			</svg>
+			<span>Artikelen</span>
+		</a>
 		<!-- Nieuws en Instellingen nav-items uitgeschakeld — zie nieuws/DISABLED.md -->
 	</nav>
 </div>

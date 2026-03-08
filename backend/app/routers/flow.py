@@ -1,8 +1,10 @@
 import json
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import select
 
 from app.database import async_session
+from app.models.flow import FlowExecution
 from app.schemas.flow import FlowExecuteRequest, FlowExecuteResponse, FlowStatusResponse
 from app.services.flow_service import create_execution, execute_flow, get_execution
 
@@ -35,6 +37,30 @@ async def status_endpoint(execution_id: str) -> FlowStatusResponse:
             result=json.loads(execution.result_json) if execution.result_json else None,
             error=execution.error,
         )
+
+
+@router.get("/recent")
+async def recent_executions():
+    """Return the 20 most recent flow executions (for pipeline monitor)."""
+    async with async_session() as session:
+        stmt = (
+            select(FlowExecution)
+            .order_by(FlowExecution.created_at.desc())
+            .limit(20)
+        )
+        result = await session.execute(stmt)
+        executions = result.scalars().all()
+        return [
+            {
+                "id": ex.id,
+                "intent": ex.intent,
+                "status": ex.status,
+                "error": ex.error,
+                "source_text": ex.source_text[:100] if ex.source_text else "",
+                "created_at": ex.created_at.isoformat() if ex.created_at else None,
+            }
+            for ex in executions
+        ]
 
 
 def _status_message(execution) -> str:

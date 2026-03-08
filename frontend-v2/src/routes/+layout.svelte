@@ -4,7 +4,10 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import StatusBanner from '$lib/components/StatusBanner.svelte';
 	import Mic from '@lucide/svelte/icons/mic';
+	import FileText from '@lucide/svelte/icons/file-text';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Activity from '@lucide/svelte/icons/activity';
 	import Settings from '@lucide/svelte/icons/settings';
 	import '../app.css';
 
@@ -12,7 +15,10 @@
 
 	const navItems = [
 		{ href: '/', label: 'Dictafoon', icon: Mic, match: (p: string) => p === '/' },
+		{ href: '/artikelen', label: 'Artikelen', icon: FileText, match: (p: string) => p.startsWith('/artikelen') },
+		{ href: '/uren', label: 'Uren', icon: Clock, match: (p: string) => p.startsWith('/uren') },
 		{ href: '/whatsapp', label: 'WhatsApp', icon: MessageCircle, match: (p: string) => p === '/whatsapp' },
+		{ href: '/pipeline', label: 'Pipeline', icon: Activity, match: (p: string) => p === '/pipeline' },
 		{ href: '/instellingen', label: 'Instellingen', icon: Settings, match: (p: string) => p.startsWith('/instellingen') }
 	];
 </script>
@@ -41,7 +47,7 @@
 		{#each navItems as item}
 			<a
 				href={item.href}
-				class="flex flex-col items-center gap-0.5 rounded-lg px-5 py-1.5 text-[0.625rem] font-medium tracking-wide transition-colors {item.match(
+				class="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[0.625rem] font-medium tracking-wide transition-colors {item.match(
 					$page.url.pathname
 				)
 					? 'text-foreground'

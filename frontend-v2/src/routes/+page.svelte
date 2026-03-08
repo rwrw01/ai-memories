@@ -87,7 +87,8 @@
 					elapsed = 0;
 					const dictaat = await saveDictaat(blob, mimeType, duration);
 					await transcribeDictaat(dictaat);
-					await classifyDictaat(dictaat);
+					const fresh = getDictaten().find((d) => d.id === dictaat.id);
+					if (fresh) await classifyAndAutoExecute(fresh);
 				},
 				(message) => {
 					recording = false;
@@ -107,7 +108,8 @@
 		if (recovered) {
 			const dictaat = await saveDictaat(recovered.blob, recovered.mimeType, recovered.duration);
 			await transcribeDictaat(dictaat);
-			await classifyDictaat(dictaat);
+			const fresh = getDictaten().find((d) => d.id === dictaat.id);
+			if (fresh) await classifyAndAutoExecute(fresh);
 		}
 		hasInterrupted = false;
 	}
@@ -121,6 +123,20 @@
 		await navigator.clipboard.writeText(tekst);
 		copiedId = id;
 		setTimeout(() => { copiedId = null; }, 1500);
+	}
+
+	async function classifyAndAutoExecute(d: Dictaat) {
+		await classifyDictaat(d);
+		const classified = getDictaten().find((x) => x.id === d.id);
+		if (classified?.classificatie && classified.classificatie.intent !== 'aantekening') {
+			await executeDictaatFlow(classified, classified.classificatie.params);
+		}
+	}
+
+	async function handleRetry(d: Dictaat) {
+		await transcribeDictaat(d);
+		const fresh = getDictaten().find((x) => x.id === d.id);
+		if (fresh) await classifyAndAutoExecute(fresh);
 	}
 
 	async function handleExecuteFlow(d: Dictaat, _intent: string, params: Record<string, string>) {
@@ -233,7 +249,7 @@
 									</Button>
 								{/if}
 								{#if d.status === 'fout'}
-									<Button variant="ghost" size="sm" class="h-auto gap-1 p-0 text-xs text-muted-foreground" onclick={() => transcribeDictaat(d)}>
+									<Button variant="ghost" size="sm" class="h-auto gap-1 p-0 text-xs text-muted-foreground" onclick={() => handleRetry(d)}>
 										<RotateCcw class="size-3" />Opnieuw
 									</Button>
 								{/if}
