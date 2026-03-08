@@ -26,36 +26,31 @@ async def _call_ollama(payload: dict) -> dict:
         return resp.json()
 
 
+async def _ollama_chat(payload: dict) -> str:
+    """Send payload to Ollama and return the message content."""
+    try:
+        data = await _call_ollama(payload)
+        return data["message"]["content"]
+    except httpx.RequestError:
+        logger.error("Ollama unreachable after retries")
+        raise HTTPException(status_code=503, detail="LLM-service niet beschikbaar")
+    except httpx.HTTPStatusError as e:
+        logger.error("Ollama returned %d: %s", e.response.status_code, e.response.text)
+        raise HTTPException(status_code=502, detail="Upstream service fout")
+
+
 async def summarize(article: str) -> str:
     """Summarize a Dutch news article in 4 sentences."""
-    payload = {
+    return await _ollama_chat({
         "model": MODEL,
         "messages": [
             {"role": "system", "content": SUMMARIZE_SYSTEM},
             {"role": "user", "content": article},
         ],
         "stream": False,
-    }
-    try:
-        data = await _call_ollama(payload)
-        return data["message"]["content"]
-    except httpx.RequestError:
-        logger.error("Ollama unreachable after retries")
-        raise HTTPException(status_code=503, detail="LLM-service niet beschikbaar")
-    except httpx.HTTPStatusError as e:
-        logger.error("Ollama returned %d: %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    })
 
 
 async def chat(messages: list[dict]) -> str:
     """General chat with conversation history."""
-    payload = {"model": MODEL, "messages": messages, "stream": False}
-    try:
-        data = await _call_ollama(payload)
-        return data["message"]["content"]
-    except httpx.RequestError:
-        logger.error("Ollama unreachable after retries")
-        raise HTTPException(status_code=503, detail="LLM-service niet beschikbaar")
-    except httpx.HTTPStatusError as e:
-        logger.error("Ollama returned %d: %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    return await _ollama_chat({"model": MODEL, "messages": messages, "stream": False})

@@ -1,15 +1,17 @@
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 # --- Classification ---
 
 
 class ClassifyRequest(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=10_000)
 
 
 class ClassifyResponse(BaseModel):
-    intent: str  # "whatsapp" | "artikel" | "aantekening"
+    intent: str
     params: dict
     confidence: float
 
@@ -18,9 +20,9 @@ class ClassifyResponse(BaseModel):
 
 
 class FlowExecuteRequest(BaseModel):
-    intent: str
-    params: dict
-    source_text: str
+    intent: Literal["whatsapp", "artikel", "aantekening", "uren"]
+    params: dict = Field(default_factory=dict)
+    source_text: str = Field(..., min_length=1, max_length=10_000)
 
 
 class FlowExecuteResponse(BaseModel):

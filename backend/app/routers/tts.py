@@ -54,7 +54,7 @@ async def synthesize(req: SynthesizeRequest) -> Response:
         raise HTTPException(status_code=503, detail="TTS-service niet beschikbaar")
     except httpx.HTTPStatusError as e:
         logger.error("TTS service returned %d: %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+        raise HTTPException(status_code=502, detail="Upstream service fout")
 
 
 @router.get("/api/tts/engines")
@@ -67,4 +67,4 @@ async def engines():
         raise HTTPException(status_code=503, detail="TTS-service niet beschikbaar")
     except httpx.HTTPStatusError as e:
         logger.error("TTS engines returned %d: %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+        raise HTTPException(status_code=502, detail="Upstream service fout")

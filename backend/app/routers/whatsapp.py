@@ -3,6 +3,7 @@ import os
 
 import httpx
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app.services.http_client import service_retry
 
@@ -41,14 +42,18 @@ async def whatsapp_qr() -> dict:
         return {"ready": False, "qr": None, "error": "Service niet beschikbaar"}
 
 
+class PairRequest(BaseModel):
+    phone_number: str = Field(..., pattern=r"^\+?\d{10,15}$")
+
+
 @router.post("/pair")
-async def whatsapp_pair(body: dict) -> dict:
+async def whatsapp_pair(body: PairRequest) -> dict:
     """Request pairing code for phone number linking."""
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{WHATSAPP_BASE}/pair",
-                json=body,
+                json=body.model_dump(),
             )
             resp.raise_for_status()
             return resp.json()

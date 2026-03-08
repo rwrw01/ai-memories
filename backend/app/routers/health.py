@@ -15,6 +15,7 @@ TTS_URL = os.getenv("TTS_HEALTH_URL", "http://tts:8002/health")
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 N8N_URL = os.getenv("N8N_HEALTH_URL", "http://n8n:5678/healthz")
 WHATSAPP_URL = os.getenv("WHATSAPP_HEALTH_URL", "http://whatsapp-web:3001/health")
+NER_URL = os.getenv("NER_HEALTH_URL", "http://ner:8004/health")
 
 # Thresholds in seconds
 TIMEOUT = 5
@@ -50,13 +51,14 @@ async def _check_http(name: str, url: str) -> dict:
 
 async def check_all() -> dict:
     """Run all health checks in parallel and aggregate results."""
-    db, stt, tts, ollama, n8n, whatsapp = await asyncio.gather(
+    db, stt, tts, ollama, n8n, whatsapp, ner = await asyncio.gather(
         _check_database(),
         _check_http("stt", STT_URL),
         _check_http("tts", TTS_URL),
         _check_http("ollama", f"{OLLAMA_URL}/api/tags"),
         _check_http("n8n", N8N_URL),
         _check_http("whatsapp", WHATSAPP_URL),
+        _check_http("ner", NER_URL),
     )
 
     services = {
@@ -66,6 +68,7 @@ async def check_all() -> dict:
         "ollama": ollama,
         "n8n": n8n,
         "whatsapp": whatsapp,
+        "ner": ner,
     }
 
     all_ok = all(s["status"] == "ok" for s in services.values())

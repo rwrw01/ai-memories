@@ -1,5 +1,7 @@
+from typing import Literal
+
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.services.llm_service import chat, summarize
 
@@ -7,7 +9,7 @@ router = APIRouter()
 
 
 class SummarizeRequest(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=100_000)
 
 
 class SummarizeResponse(BaseModel):
@@ -15,12 +17,12 @@ class SummarizeResponse(BaseModel):
 
 
 class Message(BaseModel):
-    role: str  # "user" | "assistant" | "system"
-    content: str
+    role: Literal["user", "assistant", "system"]
+    content: str = Field(..., max_length=50_000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[Message]
+    messages: list[Message] = Field(..., min_length=1, max_length=50)
 
 
 class ChatResponse(BaseModel):

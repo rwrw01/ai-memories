@@ -47,6 +47,8 @@ async def upload_audio(article_id: str, engine: str, file: UploadFile) -> dict:
             raise HTTPException(status_code=404, detail="Artikel niet gevonden")
 
         audio_bytes = await file.read()
+        if len(audio_bytes) > 50 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Bestand te groot (max 50 MB)")
         rel_path = await save_audio(article_id, engine, audio_bytes)
 
         if engine == "piper":

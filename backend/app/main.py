@@ -3,10 +3,13 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
+from app.middleware.auth import verify_request
+from app.routers.artikelen import router as artikelen_router
+from app.routers.uren import router as uren_router
 from app.routers.classify import router as classify_router
 from app.routers.flow import router as flow_router
 from app.routers.health import check_all as health_check_all
@@ -21,8 +24,12 @@ from app.services.cleanup_service import daily_cleanup_loop
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_debug = os.getenv("DEBUG", "").lower() == "true"
 _origin = os.getenv("ORIGIN", "http://localhost:3000")
-ALLOWED_ORIGINS = list({_origin, "http://localhost:3000", "http://127.0.0.1:3000"})
+ALLOWED_ORIGINS = [_origin]
+if _debug:
+    ALLOWED_ORIGINS.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
+ALLOWED_ORIGINS = list(set(ALLOWED_ORIGINS))
 
 
 @asynccontextmanager
@@ -35,14 +42,22 @@ async def lifespan(app: FastAPI):
     cleanup_task.cancel()
 
 
-app = FastAPI(title="Memories Backend", version="0.5.0", lifespan=lifespan)
+app = FastAPI(
+    title="Memories Backend",
+    version="0.6.0",
+    lifespan=lifespan,
+    docs_url="/docs" if _debug else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if _debug else None,
+    dependencies=[Depends(verify_request)],
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 app.include_router(stt_router)
@@ -53,6 +68,8 @@ app.include_router(flow_router)
 app.include_router(whatsapp_router)
 app.include_router(news_router)
 app.include_router(news_ingest_router)
+app.include_router(artikelen_router)
+app.include_router(uren_router)
 
 
 @app.get("/health")

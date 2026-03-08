@@ -21,6 +21,8 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/build ./build
 
+USER node
+
 EXPOSE 3000
 
 ENV HOST=0.0.0.0
