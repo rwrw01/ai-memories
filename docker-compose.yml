@@ -23,7 +23,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - ORIGIN=${ORIGIN:-http://100.115.120.56:3000}
+      - ORIGIN=${ORIGIN:-https://pc-003.taild4fcd.ts.net}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       - BACKEND_URL=http://backend:8000
       - BODY_SIZE_LIMIT=52428800

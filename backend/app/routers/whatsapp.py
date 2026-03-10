@@ -43,7 +43,8 @@ async def whatsapp_qr() -> dict:
 
 
 class PairRequest(BaseModel):
-    phone_number: str = Field(..., pattern=r"^\+?\d{10,15}$")
+    model_config = {"populate_by_name": True}
+    phone_number: str = Field(..., alias="phoneNumber", pattern=r"^\+?\d{10,15}$")
 
 
 @router.post("/pair")
@@ -53,7 +54,7 @@ async def whatsapp_pair(body: PairRequest) -> dict:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{WHATSAPP_BASE}/pair",
-                json=body.model_dump(),
+                json={"phoneNumber": body.phone_number},
             )
             resp.raise_for_status()
             return resp.json()
