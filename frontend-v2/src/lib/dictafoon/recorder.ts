@@ -76,8 +76,9 @@ export async function startRecording(
 		}
 		stopTimer();
 
-		await clearChunks();
-
+		// IMPORTANT: getUserMedia MUST be called first, before any async work.
+		// iOS Safari requires it to be in the direct user-gesture call stack.
+		// Any await before this call breaks the user activation chain.
 		const stream = await navigator.mediaDevices.getUserMedia({
 			audio: {
 				echoCancellation: { ideal: true },
@@ -85,6 +86,8 @@ export async function startRecording(
 				autoGainControl: { ideal: true }
 			}
 		});
+
+		await clearChunks();
 		currentMimeType = getSupportedMimeType();
 		mediaRecorder = new MediaRecorder(stream, currentMimeType ? { mimeType: currentMimeType } : undefined);
 		chunkIndex = 0;

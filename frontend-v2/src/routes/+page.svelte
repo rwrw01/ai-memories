@@ -98,8 +98,18 @@
 			);
 			recording = true;
 			elapsed = 0;
-		} catch {
-			foutmelding = 'Geen toegang tot microfoon';
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.error('Microfoon fout:', msg, err);
+			if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+				foutmelding = 'Geen toegang tot microfoon. Controleer je instellingen.';
+			} else if (msg.includes('NotFound') || msg.includes('device')) {
+				foutmelding = 'Geen microfoon gevonden op dit apparaat.';
+			} else if (typeof navigator.mediaDevices === 'undefined') {
+				foutmelding = 'Microfoon niet beschikbaar (HTTPS vereist).';
+			} else {
+				foutmelding = `Microfoon fout: ${msg}`;
+			}
 		}
 	}
 
